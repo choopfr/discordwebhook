@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Webhook Sender</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        input, textarea, button {
+            margin: 10px;
+            padding: 10px;
+            width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <h2>Discord Webhook Sender</h2>
+    <input type="text" id="webhookUrl" placeholder="Enter Discord Webhook URL">
+    <textarea id="message" placeholder="Enter your message"></textarea>
+    <button onclick="sendMessage()">Send Message</button>
+    <p id="status"></p>
+
+    <script>
+        function sendMessage() {
+            const webhookUrl = document.getElementById("webhookUrl").value;
+            const message = document.getElementById("message").value;
+            const status = document.getElementById("status");
+            
+            if (!webhookUrl || !message) {
+                status.innerText = "Please enter a webhook URL and message.";
+                status.style.color = "red";
+                return;
+            }
+            
+            fetch(webhookUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: message })
+            })
+            .then(response => {
+                if (response.ok) {
+                    status.innerText = "Message sent successfully!";
+                    status.style.color = "green";
+                } else {
+                    status.innerText = "Failed to send message. Check your webhook URL.";
+                    status.style.color = "red";
+                }
+            })
+            .catch(error => {
+                status.innerText = "Error sending message.";
+                status.style.color = "red";
+            });
+        }
+    </script>
+</body>
+</html>
