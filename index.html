@@ -3,26 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>webhook sender</title>
+    <title>Discord Webhook Tools</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 50px;
+            margin: 20px;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .panel {
+            flex: 1;
+            min-width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin-top: 0;
         }
         input, textarea, button {
-            margin: 10px;
+            margin: 10px 0;
             padding: 10px;
-            width: 80%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #5865F2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #4752C4;
+        }
+        #status, #viewerStatus {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        #messagesContainer {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .message:last-child {
+            border-bottom: none;
+        }
+        .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .message-author {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .message-time {
+            color: #666;
+            font-size: 0.8em;
+        }
+        .message-content {
+            margin-left: 50px;
         }
     </style>
 </head>
 <body>
-    <h2>discord webhook sender</h2>
-    <input type="text" id="webhookUrl" placeholder="webhook url">
-    <textarea id="message" placeholder="message"></textarea>
-    <button onclick="sendMessage()">send message</button>
-    <p id="status"></p>
+    <h1>Discord Webhook Tools</h1>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>Send Message via Webhook</h2>
+            <input type="text" id="webhookUrl" placeholder="Webhook URL">
+            <textarea id="message" placeholder="Message content" rows="4"></textarea>
+            <button onclick="sendMessage()">Send Message</button>
+            <div id="status"></div>
+        </div>
+        
+        <div class="panel">
+            <h2>View Channel Messages</h2>
+            <input type="text" id="botToken" placeholder="Bot Token">
+            <input type="text" id="channelId" placeholder="Channel ID">
+            <input type="number" id="messageLimit" placeholder="Number of messages (max 100)" value="20" min="1" max="100">
+            <button onclick="fetchMessages()">Fetch Messages</button>
+            <div id="viewerStatus"></div>
+            <div id="messagesContainer"></div>
+        </div>
+    </div>
 
     <script>
         function sendMessage() {
@@ -31,8 +127,8 @@
             const status = document.getElementById("status");
             
             if (!webhookUrl || !message) {
-                status.innerText = "please enter a webhook url and message.";
-                status.style.color = "red";
+                status.innerText = "Please enter a webhook URL and message.";
+                status.className = "error";
                 return;
             }
             
@@ -43,16 +139,88 @@
             })
             .then(response => {
                 if (response.ok) {
-                    status.innerText = "message sent successfully!";
-                    status.style.color = "green";
+                    status.innerText = "Message sent successfully!";
+                    status.className = "success";
+                    document.getElementById("message").value = "";
                 } else {
-                    status.innerText = "failed to send message. check your webhook url.";
-                    status.style.color = "red";
+                    status.innerText = "Failed to send message. Check your webhook URL.";
+                    status.className = "error";
                 }
             })
             .catch(error => {
-                status.innerText = "error sending message.";
-                status.style.color = "red";
+                status.innerText = "Error sending message: " + error.message;
+                status.className = "error";
+            });
+        }
+
+        function fetchMessages() {
+            const botToken = document.getElementById("botToken").value;
+            const channelId = document.getElementById("channelId").value;
+            const limit = document.getElementById("messageLimit").value;
+            const status = document.getElementById("viewerStatus");
+            const messagesContainer = document.getElementById("messagesContainer");
+            
+            if (!botToken || !channelId) {
+                status.innerText = "Please enter a bot token and channel ID.";
+                status.className = "error";
+                return;
+            }
+            
+            status.innerText = "Fetching messages...";
+            status.className = "";
+            
+            fetch(`https://discord.com/api/v10/channels/${channelId}/messages?limit=${limit}`, {
+                headers: {
+                    "Authorization": `Bot ${botToken}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(messages => {
+                if (messages.length === 0) {
+                    messagesContainer.innerHTML = "<p>No messages found in this channel.</p>";
+                    status.innerText = "No messages found.";
+                    status.className = "";
+                    return;
+                }
+                
+                let html = "";
+                messages.forEach(msg => {
+                    const date = new Date(msg.timestamp);
+                    const formattedDate = date.toLocaleString();
+                    
+                    html += `
+                        <div class="message">
+                            <div class="message-header">
+                                <img src="${msg.author.avatar ? `https://cdn.discordapp.com/avatars/${msg.author.id}/${msg.author.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                                     alt="Avatar" class="message-avatar">
+                                <span class="message-author">${msg.author.username}</span>
+                                <span class="message-time">${formattedDate}</span>
+                            </div>
+                            <div class="message-content">
+                                ${msg.content}
+                                ${msg.attachments.length > 0 ? 
+                                    msg.attachments.map(a => `<div><a href="${a.url}" target="_blank">Attachment: ${a.filename}</a></div>`).join('') 
+                                    : ''}
+                                ${msg.embeds.length > 0 ? '<div>[Embedded content]</div>' : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                messagesContainer.innerHTML = html;
+                status.innerText = `Fetched ${messages.length} messages.`;
+                status.className = "success";
+            })
+            .catch(error => {
+                status.innerText = "Error fetching messages: " + error.message;
+                status.className = "error";
+                messagesContainer.innerHTML = "";
+                console.error("Error:", error);
             });
         }
     </script>
